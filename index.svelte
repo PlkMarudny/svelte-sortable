@@ -1,8 +1,8 @@
 <script>
-    import Sortable from "sortablejs"
-    import gibstr from "gibstr"
-    import {onMount, onDestroy, createEventDispatcher} from "svelte"
-    import store from "./store.js"
+    import Sortable from "sortablejs";
+    
+    import { onMount, onDestroy, createEventDispatcher } from "svelte";
+    import store from "./store.js";
 
     // var sortable = new Sortable(el, {
     //     group: "name",  // or { name: "...", pull: [true, false, 'clone', array], put: [true, false, array] }
@@ -125,69 +125,99 @@
     //     }
     // });
 
-    const dispatch = createEventDispatcher()
+    const dispatch = createEventDispatcher();
 
-    export let options = {}
-    export let items = []
+    export let options = {};
+    export let items = [];
 
-    let targetEl
-    let sortable
-    let id = gibstr()
-    let unsubscribe
+    let targetEl;
+    let sortable;
 
     onMount(() => {
-
-        //This is currently only used to add items from another list.
-        unsubscribe = store.subscribe(event => {
-            if (!event || event.id !== id) {
-                return
-            }
-
-            items.splice(event.index, 0, event.item)
-            console.log(items)
-        })
-
         sortable = Sortable.create(
-                targetEl,
-                Object.assign(options, {
-                            // Called by any change to the list (add / update / remove)
-                            onSort: ev => {
-                                if (ev.to.id === id) {
-                                    moveArrayElement(items, ev.oldIndex, ev.newIndex)
-                                } else {
-                                    const item = items.splice(ev.oldIndex, 1)
-
-                                    store.set({
-                                        id: ev.to.id,
-                                        index: ev.newIndex,
-                                        item: item[0]
-                                    })
-                                }
-
-                                dispatch(`change`, items)
-
-                            }
-
+            targetEl,
+            Object.assign(options, {
+                onRemove: (ev) => {
+                    if (ev.oldIndicies.length > 0) {
+                        for (let i = ev.oldIndicies.length - 1; i >= 0; i--) {
+                            items.splice(ev.oldIndicies[i].index, 1);
                         }
-                )
-        )
-    })
+                    } else {
+                        items.splice(ev.oldIndex, 1);
+                    }
+                },
+                onAdd: (ev) => {
+                    if (ev.newIndicies.length > 0) {
+                        for (let i = 0; i < ev.newIndicies.length; i++) {
+                            items.splice(
+                                ev.newIndicies[i].index,
+                                0,
+                                $store.items[i]
+                            );
+                        }
+                    } else {
+                        items.splice(ev.newIndex, 0, $store.items);
+                    }
+                },
+                onStart: (ev) => {
+                    store.set({
+                        from: ev.from,
+                        items:
+                            ev.oldIndicies.length > 0
+                                ? ev.oldIndicies.map((i) => items[i.index])
+                                : items[ev.oldIndex],
+                    });
+                },
+                onUpdate: (ev) => {
+                    // guard against 'update' event fired when there is more than one list - 
+                    // source list is reordered, and this breaks 'remove' event fired later,
+                    // as indicies values are not valid any longer
+                    if (ev.pullMode !== true && ev.oldIndicies.length > 0) {
+                        moveArrayElements(
+                            items,
+                            ev.oldIndicies,
+                            ev.newIndicies
+                        );
+                    } else {
+                        moveArrayElement(items, ev.oldIndex, ev.newIndex);
+                    }
+                },
+                onEnd: () => {
+                    dispatch("change");
+                },
+            })
+        );
+    });
 
     onDestroy(() => {
-        sortable.destroy()
-        unsubscribe()
-    })
+        sortable.destroy();
+    });
 
     function moveArrayElement(array, from, to) {
-        const item = array[from]
-        array.splice(from, 1)
-        array.splice(to, 0, item)
+        const item = array[from];
+        array.splice(from, 1);
+        array.splice(to, 0, item);
     }
 
+    function moveArrayElements(array, oldIndicies, newIndicies) {
+        const itemsNo  = oldIndicies.length;
+        // mappings [ [src idx1, dest idx2], ... , [src idxn, dest idxn]]
+        let mappings = new Array(itemsNo);
+        for (let i = 0; i < itemsNo; i++) {
+            mappings[i] = [oldIndicies[i].index, newIndicies[i].index];
+        }
+        // first extract items to be moved
+        let tmp = new Array(itemsNo);
+        for (i = itemsNo - 1; i >= 0; i--) {
+            tmp[i] = array.splice(mappings[i][0], 1)[0];
+        }
+        // moved items form a continous block, so it is easy to insert them
+        array.splice(mappings[0][1], 0, ...tmp);
+    }
 </script>
 
-<div bind:this={targetEl} {id}>
+<div bind:this={targetEl}>
     {#each items as item}
-        <slot {item}></slot>
+        <slot {item} />
     {/each}
 </div>
