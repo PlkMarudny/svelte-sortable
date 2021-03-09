@@ -34,3 +34,5 @@
     </div>
 </Sortable>
 ```
+
+The [MultiDrag](https://github.com/SortableJS/Sortable/tree/master/plugins/MultiDrag) plugin from [SortableJS](https://sortablejs.github.io/Sortable/) is supported. The more complicated setup that uses a component passed to a sortable list can be seen here: [REPL](https://svelte.dev/repl/3f73be6a243a4cda84264fae4defd65e?version=3.35.0)
