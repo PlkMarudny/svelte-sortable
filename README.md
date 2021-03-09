@@ -3,7 +3,7 @@
 >A Svelte wrapper component for [SortableJS](https://sortablejs.github.io/Sortable/).
 
 ## Install
-`npm i -S svelte-sortable` or `yarn add svelte-sortable`
+`npm i svelte-sortable` or `yarn add svelte-sortable`
 
 ## Usage
 ```sveltehtml
